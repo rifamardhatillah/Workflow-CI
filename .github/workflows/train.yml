@@ -11,59 +11,46 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
-    # 1. Checkout repo
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v2
 
-    # 2. Install MLflow + dependencies
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.10'
+
     - name: Install dependencies
       run: |
-        pip install mlflow scikit-learn pandas numpy
+        python -m pip install --upgrade pip
+        pip install mlflow
 
-    # 3. Run MLflow Project
     - name: Run MLflow Project
       run: |
-        mlflow run MLProject --env-manager=local \
-          -P data_path=diabetes_preprocessing.csv \
-          -P test_size=0.2 \
-          -P random_state=42
+        mlflow run MLProject --env-manager=local
 
-    # 4. Commit & push artifacts (optional for tugas)
     - name: Commit and push MLflow artifacts
       run: |
-        git config user.name "github-actions"
-        git config user.email "github-actions@github.com"
-
-        git add MLProject/mlruns || true
-        git add MLProject/mlflow.db || true
-        git add mlflow.db || true
-
-        git commit -m "Update MLflow artifacts" || true
-        git push || true
+        git config user.name 'github-actions'
+        git config user.email 'github-actions@github.com'
+        git add mlruns/*
+        git commit -m 'Update model artifact from MLflow tracking' || echo "Nothing to commit"
+        git push
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-
-    # 5. Ambil path model terbaru
     - name: Get latest MLflow model artifact path
       id: get_model_path
       run: |
-        MODEL_PATH=$(find MLProject/mlruns -type d -path "*/artifacts/*" | sort -r | head -n 1)
+        MODEL_PATH=$(find mlruns -type d -path "*/artifacts/model" | sort -r | head -n 1)
         echo "MODEL_PATH=$MODEL_PATH" >> $GITHUB_ENV
 
-    # 6. Login ke Docker Hub
     - name: Log in to Docker Hub
-      run: echo "${{ secrets.DOCKER_HUB_TOKEN }}" | docker login -u "${{ secrets.DOCKER_HUB_USERNAME }}" --password-stdin
+      run: echo "${{ secrets.DOCKER_HUB_TOKEN }}" | docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
 
-    # 7. Build Docker image dari model MLflow
-    - name: Build Docker Image
-      run: |
-        mlflow models build-docker \
-          -m "${{ env.MODEL_PATH }}" \
-          -n "${{ secrets.DOCKER_HUB_USERNAME }}/msml-model"
+    - name: Build Docker image
+      run: mlflow models build-docker -m $MODEL_PATH -n msml-model
 
-    # 8. Push ke Docker Hub
-    - name: Push Docker Image
+    - name: Push Docker image
       run: |
-        docker push "${{ secrets.DOCKER_HUB_USERNAME }}/msml-model:latest"
+        docker tag msml-model:latest ${{ secrets.DOCKER_HUB_USERNAME }}/msml-model:latest
+        docker push ${{ secrets.DOCKER_HUB_USERNAME }}/msml-model:latest
