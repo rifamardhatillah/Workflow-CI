@@ -29,14 +29,7 @@ X_train, X_test, y_train, y_test = train_test_split(
 # AUTLOG (boleh)
 mlflow.sklearn.autolog()
 
-
-model = RandomForestClassifier(
-    n_estimators=100,
-    random_state=args.random_state
-)
-
-model.fit(X_train, y_train)
-
 y_pred = model.predict(X_test)
 acc = accuracy_score(y_test, y_pred)
 print("Accuracy:", acc)
+
