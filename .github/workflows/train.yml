@@ -13,15 +13,14 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # Install Micromamba (lebih stabil dari Miniconda)
       - name: Install Micromamba
         uses: mamba-org/setup-micromamba@v1
         with:
           environment-file: MLProject/conda.yaml
           environment-name: mlflow-env
           cache-environment: true
+          remove-micromamba: false   # menghindari error clean-up
 
-      # Aktifkan env dan jalankan MLflow Project
       - name: Run MLflow Project
         shell: bash -l {0}
         run: |
