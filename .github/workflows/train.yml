@@ -1,37 +1,64 @@
-name: MLflow CI Trainin
+name: MLflow CI
 
 on:
   push:
-    branches: ["main"]
+    paths:
+      - 'MLProject/**'
   workflow_dispatch:
 
 jobs:
-  train:
+  train-log-and-dockerize:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout repo
-      - name: Checkout Repository
-        uses: actions/checkout@v3
 
-      # 2. Install Python dependencies via pip (PALING SIMPLE)
-      - name: Install MLflow and dependencies
-        run: |
-          pip install mlflow scikit-learn pandas numpy pandas seaborn matplotlib
+    # 1. Checkout repo
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-      # 3. Run MLflow project (HARUS lengkap parameter)
-      - name: Run MLflow Project
-        run: |
-          cd MLProject
-          mlflow run . \
-            -P data_path=diabetes_preprocessing.csv \
-            -P test_size=0.2 \
-            -P random_state=42 \
-            --env-manager=local
+    # 2. Install MLflow + dependencies
+    - name: Install dependencies
+      run: |
+        pip install mlflow scikit-learn pandas numpy
 
-      # 4. Upload MLflow artifacts
-      - name: Upload MLflow Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: model_artifacts
-          path: MLProject/mlruns
+    # 3. Run MLflow Project
+    - name: Run MLflow Project
+      run: |
+        mlflow run MLProject --env-manager=local \
+          -P data_path=diabetes_preprocessing.csv \
+          -P test_size=0.2 \
+          -P random_state=42
+
+    # 4. Commit & push artifacts (optional for tugas)
+    - name: Commit and push MLflow artifacts
+      run: |
+        git config user.name "github-actions"
+        git config user.email "github-actions@github.com"
+        git add MLProject/mlruns
+        git commit -m "Update MLflow artifacts"
+        git push || echo "No changes to commit"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    # 5. Ambil path model terbaru
+    - name: Get latest MLflow model artifact path
+      id: get_model_path
+      run: |
+        MODEL_PATH=$(find MLProject/mlruns -type d -path "*/artifacts/*" | sort -r | head -n 1)
+        echo "MODEL_PATH=$MODEL_PATH" >> $GITHUB_ENV
+
+    # 6. Login ke Docker Hub
+    - name: Log in to Docker Hub
+      run: echo "${{ secrets.DOCKER_HUB_TOKEN }}" | docker login -u "${{ secrets.DOCKER_HUB_USERNAME }}" --password-stdin
+
+    # 7. Build Docker image dari model MLflow
+    - name: Build Docker Image
+      run: |
+        mlflow models build-docker \
+          -m "${{ env.MODEL_PATH }}" \
+          -n "${{ secrets.DOCKER_HUB_USERNAME }}/msml-model"
+
+    # 8. Push ke Docker Hub
+    - name: Push Docker Image
+      run: |
+        docker push "${{ secrets.DOCKER_HUB_USERNAME }}/msml-model:latest"
