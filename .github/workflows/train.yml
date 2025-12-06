@@ -10,25 +10,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. Checkout repo
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Setup Conda
-        uses: conda-incubator/setup-miniconda@v2
-        with:
-          auto-update-conda: true
-          activate-environment: ""
-          use-mamba: true
-
+      # 2. Install Python dependencies via pip (PALING SIMPLE)
       - name: Install MLflow and dependencies
         run: |
-          pip install mlflow scikit-learn pandas seaborn matplotlib numpy
+          pip install mlflow scikit-learn pandas numpy pandas seaborn matplotlib
 
-      - name: Run MLflow Project (NO conda activate error)
+      # 3. Run MLflow project (HARUS lengkap parameter)
+      - name: Run MLflow Project
         run: |
           cd MLProject
-          mlflow run . -P data_path=dataset_preprocessing.csv --env-manager=local
+          mlflow run . \
+            -P data_path=diabetes_preprocessing.csv \
+            -P test_size=0.2 \
+            -P random_state=42 \
+            --env-manager=local
 
+      # 4. Upload MLflow artifacts
       - name: Upload MLflow Artifacts
         uses: actions/upload-artifact@v4
         with:
