@@ -19,7 +19,7 @@ jobs:
           environment-file: MLProject/conda.yaml
           environment-name: mlflow-env
           cache-environment: true
-          remove-micromamba: false   # menghindari error clean-up
+          remove-micromamba: false   # FIX ERROR
 
       - name: Run MLflow Project
         shell: bash -l {0}
