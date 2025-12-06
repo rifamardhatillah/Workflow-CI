@@ -13,26 +13,17 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Setup Miniconda
-        uses: conda-incubator/setup-miniconda@v2
-        with:
-          auto-update-conda: true
-          python-version: 3.10
-          activate-environment: ""
-          use-mamba: true
-
+      # Install Micromamba (lebih stabil dari Miniconda)
       - name: Install Micromamba
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y micromamba
+        uses: mamba-org/setup-micromamba@v1
+        with:
+          environment-file: MLProject/conda.yaml
+          environment-name: mlflow-env
+          cache-environment: true
 
-      - name: Create Environment via conda.yaml
-        run: |
-          cd MLProject
-          micromamba create -f conda.yaml -y
-          micromamba activate mlflow-env
-
+      # Aktifkan env dan jalankan MLflow Project
       - name: Run MLflow Project
+        shell: bash -l {0}
         run: |
           cd MLProject
           mlflow run . --env-manager=local
@@ -40,5 +31,5 @@ jobs:
       - name: Upload MLflow Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: trained-model
+          name: model_artifacts
           path: MLProject/mlruns
