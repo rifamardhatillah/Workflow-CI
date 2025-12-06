@@ -1,4 +1,3 @@
-
 name: diabetes-ml-basic
 
 conda_env: conda.yaml
@@ -8,7 +7,9 @@ entry_points:
     parameters:
       test_size: {type: float, default: 0.2}
       random_state: {type: int, default: 42}
+      data_path: {type: str}
     command: >
       python modelling.py
       --test_size {test_size}
       --random_state {random_state}
+      --data_path {data_path}
