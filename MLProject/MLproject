@@ -1,16 +1,9 @@
+
 name: workflow_ci_training
-
-
-entry_points:
-  main:
-    parameters:
-      test_size: {type: float, default: 0.2}
-      random_state: {type: int, default: 42}
-      data_path: {type: str}
-
-    command: >
-      python modelling.py
-      --test_size {test_size}
-      --random_state {random_state}
-      --data_path {data_path}
-
+  run: |
+    cd MLProject
+    mlflow run . \
+      -P test_size=0.2 \
+      -P random_state=42 \
+      -P data_path=diabetes_preprocessing.csv \
+      --env-manager=local
