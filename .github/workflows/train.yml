@@ -1,4 +1,4 @@
-name: MLflow CI Training
+name: MLflow CI Trainin
 
 on:
   push:
