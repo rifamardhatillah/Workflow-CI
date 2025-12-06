@@ -1,0 +1,44 @@
+name: MLflow CI Training
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Miniconda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-update-conda: true
+          python-version: 3.10
+          activate-environment: ""
+          use-mamba: true
+
+      - name: Install Micromamba
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y micromamba
+
+      - name: Create Environment via conda.yaml
+        run: |
+          cd MLProject
+          micromamba create -f conda.yaml -y
+          micromamba activate mlflow-env
+
+      - name: Run MLflow Project
+        run: |
+          cd MLProject
+          mlflow run . --env-manager=local
+
+      - name: Upload MLflow Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: trained-model
+          path: MLProject/mlruns
