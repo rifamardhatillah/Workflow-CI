@@ -34,11 +34,16 @@ jobs:
       run: |
         git config user.name "github-actions"
         git config user.email "github-actions@github.com"
-        git add MLProject/mlruns
-        git commit -m "Update MLflow artifacts"
-        git push || echo "No changes to commit"
+
+        git add MLProject/mlruns || true
+        git add MLProject/mlflow.db || true
+        git add mlflow.db || true
+
+        git commit -m "Update MLflow artifacts" || true
+        git push || true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
     # 5. Ambil path model terbaru
     - name: Get latest MLflow model artifact path
