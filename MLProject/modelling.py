@@ -5,33 +5,38 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
+import argparse
 
-# Load dataset hasil preprocessing
-df = pd.read_csv("diabetes_preprocessing.csv")
+# -----------------------------
+# PARSE ARGUMEN DARI MLflow
+# -----------------------------
+parser = argparse.ArgumentParser()
+parser.add_argument("--test_size", type=float, default=0.2)
+parser.add_argument("--random_state", type=int, default=42)
+parser.add_argument("--data_path", type=str, required=True)
+args = parser.parse_args()
+
+# Load dataset
+df = pd.read_csv(args.data_path)
 
 X = df.drop("Outcome", axis=1)
 y = df["Outcome"]
 
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42
+    X, y, test_size=args.test_size, random_state=args.random_state
 )
 
-# Set nama experiment MLflow
-mlflow.set_experiment("Diabetes-ML-Basic")
-
-# Autolog → dipakai untuk tingkatan BASIC
+# AUTLOG (boleh)
 mlflow.sklearn.autolog()
 
-with mlflow.start_run():
-    model = RandomForestClassifier(
-        n_estimators=100,
-        random_state=42
-    )
-    
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
 
-    acc = accuracy_score(y_test, y_pred)
-    print("Accuracy:", acc)
+model = RandomForestClassifier(
+    n_estimators=100,
+    random_state=args.random_state
+)
 
-print("Training selesai! Cek MLflow UI untuk hasil tracking.")
+model.fit(X_train, y_train)
+
+y_pred = model.predict(X_test)
+acc = accuracy_score(y_test, y_pred)
+print("Accuracy:", acc)
