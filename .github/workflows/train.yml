@@ -68,7 +68,7 @@ jobs:
         run: |
           mlflow models build-docker \
             -m ${{ steps.get_model.outputs.model_path }} \
-            -t diabetes-ml
+           
 
       # 10. Tag image sesuai username Docker Hub
       - name: Tag Docker Image
