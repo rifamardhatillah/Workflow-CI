@@ -9,8 +9,8 @@ from sklearn.metrics import accuracy_score
 df = pd.read_csv("diabetes_preprocessing.csv")
 
 # Pisahkan fitur dan target
-X = df.drop("target", axis=1)
-y = df["target"]
+X = df.drop("Outcome", axis=1)   # FIX di sini
+y = df["Outcome"]                # FIX di sini
 
 # Train-test split
 X_train, X_test, y_train, y_test = train_test_split(
