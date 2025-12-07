@@ -24,8 +24,7 @@ jobs:
           mlflow run . \
             -P data_path=diabetes_preprocessing.csv \
             --env-manager=local
-      # 5. DEBUG — CEK LETAK mlruns
-      # -------------------------
+
       - name: Debug folder structure
         run: |
           echo "=== ROOT DIR ==="
@@ -33,9 +32,6 @@ jobs:
           echo "=== MLProject DIR ==="
           ls -R MLProject
 
-      # -------------------------
-      # 6. Upload MLflow Artifacts
-      # -------------------------
       - name: Upload MLflow Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -46,9 +42,9 @@ jobs:
       - name: Get Latest MLflow Model Path
         id: get_model
         run: |
-          model_path=$(find MLProject/mlruns -type d -path "*/artifacts/model" | sort -r | head -n 1)
+          model_path=$(find MLProject/mlruns -type f -name "MLmodel" | xargs -n1 dirname | sort -r | head -n 1)
           echo "model_path=$model_path" >> $GITHUB_OUTPUT
-          echo "Found model: $model_path"
+          echo "MODEL PATH FOUND: $model_path"
 
       - name: Enable Docker
         run: |
@@ -63,8 +59,9 @@ jobs:
 
       - name: Build Docker Image Using MLflow
         run: |
+          echo "Using model path: ${{ steps.get_model.outputs.model_path }}"
           mlflow models build-docker \
-            -m "${{ steps.get_model.outputs.model_path }}" \
+            -m ${{ steps.get_model.outputs.model_path }} \
             -n diabetes_ml
 
       - name: Tag Docker Image
