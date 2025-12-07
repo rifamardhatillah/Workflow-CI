@@ -4,20 +4,23 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
+import argparse
 
-# Load dataset hasil preprocessing
-df = pd.read_csv("diabetes_preprocessing.csv")
+parser = argparse.ArgumentParser()
+parser.add_argument("--test_size", type=float, default=0.2)
+parser.add_argument("--random_state", type=int, default=42)
+parser.add_argument("--data_path", type=str, required=True)
+args = parser.parse_args()
 
-# Pisahkan fitur dan target
-X = df.drop("Outcome", axis=1)   # FIX di sini
-y = df["Outcome"]                # FIX di sini
+df = pd.read_csv(args.data_path)
 
-# Train-test split
+X = df.drop("Outcome", axis=1)
+y = df["Outcome"]
+
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42
+    X, y, test_size=args.test_size, random_state=args.random_state
 )
 
-# Aktifkan autolog MLflow
 mlflow.autolog()
 
 with mlflow.start_run():
@@ -28,5 +31,5 @@ with mlflow.start_run():
     acc = accuracy_score(y_test, preds)
 
     mlflow.sklearn.log_model(model, "model")
-    
-    print(f"Accuracy: {acc}")
+
+    print("Accuracy:", acc)
