@@ -1,35 +1,32 @@
 import mlflow
 import mlflow.sklearn
-
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
-import argparse
 
-# -----------------------------
-# PARSE ARGUMEN DARI MLflow
-# -----------------------------
-parser = argparse.ArgumentParser()
-parser.add_argument("--test_size", type=float, default=0.2)
-parser.add_argument("--random_state", type=int, default=42)
-parser.add_argument("--data_path", type=str, required=True)
-args = parser.parse_args()
+# Load dataset hasil preprocessing
+df = pd.read_csv("diabetes_preprocessing.csv")
 
-# Load dataset
-df = pd.read_csv(args.data_path)
+# Pisahkan fitur dan target
+X = df.drop("target", axis=1)
+y = df["target"]
 
-X = df.drop("Outcome", axis=1)
-y = df["Outcome"]
-
+# Train-test split
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=args.test_size, random_state=args.random_state
+    X, y, test_size=0.2, random_state=42
 )
 
-# AUTLOG (boleh)
-mlflow.sklearn.autolog()
+# Aktifkan autolog MLflow
+mlflow.autolog()
 
-y_pred = model.predict(X_test)
-acc = accuracy_score(y_test, y_pred)
-print("Accuracy:", acc)
+with mlflow.start_run():
+    model = LogisticRegression(max_iter=1000)
+    model.fit(X_train, y_train)
 
+    preds = model.predict(X_test)
+    acc = accuracy_score(y_test, preds)
+
+    mlflow.sklearn.log_model(model, "model")
+    
+    print(f"Accuracy: {acc}")
