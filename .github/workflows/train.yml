@@ -1,77 +1,79 @@
-name: MLflow CI
+name: MLflow CI Training Advanced
 
 on:
   push:
-    paths:
-      - 'MLProject/**'
+    branches: ["main"]
   workflow_dispatch:
 
 jobs:
-  train-log-and-dockerize:
+  train:
     runs-on: ubuntu-latest
 
     steps:
+      
+      - name: Checkout Repository
+        uses: actions/checkout@v3
 
-    # --- 1. Checkout repository ---
-    - name: Checkout repository
-      uses: actions/checkout@v2
+      - name: Setup Conda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-update-conda: true
+          activate-environment: ""
+          use-mamba: true
 
-    # --- 2. Set up Python ---
-    - name: Set up Python
-      uses: actions/setup-python@v3
-      with:
-        python-version: "3.10"
+      - name: Install MLflow and dependencies
+        run: |
+          pip install mlflow scikit-learn pandas seaborn matplotlib numpy
 
-    # --- 3. Install dependencies ---
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install mlflow scikit-learn pandas numpy seaborn matplotlib
+      - name: Run MLflow Project
+        run: |
+          cd MLProject
+          mlflow run . \
+            -P data_path=diabetes_preprocessing.csv \
+            --env-manager=local
 
-    # --- 4. Run MLflow Project ---
-    - name: Run MLflow Project
-      run: |
-        cd MLProject
-        mlflow run . \
-          -P test_size=0.2 \
-          -P random_state=42 \
-          -P data_path=diabetes_preprocessing.csv \
-          --env-manager=local
+      - name: Upload MLflow Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: model_artifacts
+          path: MLProject/mlruns
 
-    # --- 5. Commit & push MLflow artifacts ---
-    - name: Commit and push MLflow artifacts
-      run: |
-        git config user.name "github-actions"
-        git config user.email "github-actions@github.com"
+      # ==================================================
+      # AMBIL MODEL TERBARU DARI MLRUNS (yang paling aman)
+      # ==================================================
+      - name: Get Latest MLflow Model Path
+        id: get_model
+        run: |
+          model_path=$(find MLProject/mlruns -type d -path "*/artifacts/model" | sort -r | head -n 1)
+          echo "model_path=$model_path" >> $GITHUB_OUTPUT
+          echo "Model Path: $model_path"
 
-        git add MLProject/mlruns || echo "Nothing to add"
-        git commit -m "Update MLflow artifacts" || echo "Nothing to commit"
-        git push || echo "Nothing to push"
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Enable Docker
+        run: |
+          sudo systemctl start docker
+          docker --version
 
-    # --- 6. Get Latest Model Artifact Path ---
-    - name: Get latest MLflow model artifact path
-      id: get_model
-      run: |
-        MODEL_PATH=$(find MLProject/mlruns -type d -path "*/artifacts/model" | sort -r | head -n 1)
-        echo "MODEL_PATH=$MODEL_PATH" >> $GITHUB_ENV
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-    # --- 7. Docker Login ---
-    - name: Log in to Docker Hub
-      run: echo "${{ secrets.DOCKER_HUB_TOKEN }}" | docker login -u "${{ secrets.DOCKER_HUB_USERNAME }}" --password-stdin
+      # ==========================
+      # BUILD DOCKER IMAGE MLflow
+      # ==========================
+      - name: Build Docker Image Using MLflow
+        run: |
+          mlflow models build-docker \
+            -m ${{ steps.get_model.outputs.model_path }} \
+            -n diabetes-ml
 
-    # --- 8. Build Docker Image ---
-    - name: Build Docker image from MLflow model
-      run: |
-        mlflow models build-docker \
-          -m $MODEL_PATH \
-          -n mlflow-diabetes-model
+      # TAG IMAGE
+      - name: Tag Docker Image
+        run: |
+          docker tag diabetes-ml:latest ${{ secrets.DOCKER_USERNAME }}/diabetes-ml:latest
 
-    # --- 9. Push Docker Image to Docker Hub ---
-    - name: Push Docker Image
-      run: |
-        docker tag mlflow-diabetes-model:latest \
-          ${{ secrets.DOCKER_HUB_USERNAME }}/diabetes-ml:latest
-
-        docker push ${{ secrets.DOCKER_HUB_USERNAME }}/diabetes-ml:latest
+      # PUSH DOCKER IMAGE KE DOCKERHUB
+      - name: Push Docker Image to Docker Hub
+        run: |
+          docker push ${{ secrets.DOCKER_USERNAME }}/diabetes-ml:latest
