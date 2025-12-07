@@ -10,10 +10,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
+      # -------------------------
+      # 1. Checkout repository
+      # -------------------------
       - name: Checkout Repository
         uses: actions/checkout@v3
 
+      # -------------------------
+      # 2. Setup Conda
+      # -------------------------
       - name: Setup Conda
         uses: conda-incubator/setup-miniconda@v2
         with:
@@ -21,47 +26,87 @@ jobs:
           activate-environment: ""
           use-mamba: true
 
-      - name: Install MLflow dependencies
+      # -------------------------
+      # 3. Install Dependencies
+      # -------------------------
+      - name: Install MLflow and dependencies
         run: |
           pip install mlflow scikit-learn pandas seaborn matplotlib numpy
 
+      # -------------------------
+      # 4. RUN MLflow PROJECT
+      # -------------------------
       - name: Run MLflow Project
         run: |
           cd MLProject
-          mlflow run . \
-            -P data_path=diabetes_preprocessing.csv \
-            --env-manager=local
+          mlflow run . -P data_path=diabetes_preprocessing.csv --env-manager=local
 
+      # -------------------------
+      # 5. DEBUG — CEK LETAK mlruns
+      # -------------------------
+      - name: Debug folder structure
+        run: |
+          echo "=== ROOT DIR ==="
+          ls -R .
+          echo "=== MLProject DIR ==="
+          ls -R MLProject
+
+      # -------------------------
+      # 6. Upload MLflow Artifacts
+      # -------------------------
+      - name: Upload MLflow Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: model_artifacts
+          path: MLProject/mlruns/
+          if-no-files-found: warn
+
+      # -------------------------
+      # 7. Get Latest MLflow Model Path
+      # -------------------------
       - name: Get Latest MLflow Model Path
         id: get_model
         run: |
-          model_path=$(find MLProject/mlruns/0/models -mindepth 1 -maxdepth 1 -type d | sort | tail -n 1)
-          echo "model_path=$model_path/artifacts" >> $GITHUB_OUTPUT
-          echo "Found model: $model_path"
+          model_path=$(find MLProject/mlruns -type d -path "*/artifacts/model" | sort -r | head -n 1)
+          echo "model_path=$model_path" >> $GITHUB_OUTPUT
+          echo "Model Path: $model_path"
 
-
+      # -------------------------
+      # 8. Enable Docker
+      # -------------------------
       - name: Enable Docker
         run: |
           sudo systemctl start docker
           docker --version
 
+      # -------------------------
+      # 9. Login to DockerHub
+      # -------------------------
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      # -------------------------
+      # 10. Build Docker Image
+      # -------------------------
       - name: Build Docker Image Using MLflow
         run: |
           mlflow models build-docker \
-            -m "${{ steps.get_model.outputs.model_path }}" \
-            -n diabetes_ml
+            -m ${{ steps.get_model.outputs.model_path }} \
+            -n diabetes-ml
 
+      # -------------------------
+      # 11. Tag image
+      # -------------------------
       - name: Tag Docker Image
         run: |
-          docker tag diabetes_ml:latest \
-            ${{ secrets.DOCKERHUB_USERNAME }}/diabetes_ml:latest
+          docker tag diabetes-ml:latest ${{ secrets.DOCKERHUB_USERNAME }}/diabetes-ml:latest
 
-      - name: Push Docker Image
+      # -------------------------
+      # 12. Push image ke DockerHub
+      # -------------------------
+      - name: Push Docker Image to Docker Hub
         run: |
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/diabetes_ml:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/diabetes-ml:latest
