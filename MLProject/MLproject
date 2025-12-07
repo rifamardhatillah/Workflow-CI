@@ -1,9 +1,10 @@
 
-name: workflow_ci_training
-  run: |
-    cd MLProject
-    mlflow run . \
-      -P test_size=0.2 \
-      -P random_state=42 \
-      -P data_path=diabetes_preprocessing.csv \
-      --env-manager=local
+name: Workflow_ci_training
+
+conda_env: conda.yaml
+
+entry_points:
+  main:
+    parameters:
+      run_name: {type: str, default: "Model Logistic Regression"}
+    command: "python modelling.py"
