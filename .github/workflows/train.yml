@@ -14,6 +14,13 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
+      - name: Setup Conda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-update-conda: true
+          activate-environment: ""
+          use-mamba: true
+
       - name: Install MLflow dependencies
         run: |
           pip install mlflow scikit-learn pandas seaborn matplotlib numpy
@@ -28,9 +35,10 @@ jobs:
       - name: Get Latest MLflow Model Path
         id: get_model
         run: |
-          model_path=$(find MLProject/mlruns -type d -path "*/artifacts/model" | sort -r | head -n 1)
-          echo "model_path=$model_path" >> $GITHUB_OUTPUT
+          model_path=$(find MLProject/mlruns/0/models -mindepth 1 -maxdepth 1 -type d | sort | tail -n 1)
+          echo "model_path=$model_path/artifacts" >> $GITHUB_OUTPUT
           echo "Found model: $model_path"
+
 
       - name: Enable Docker
         run: |
